@@ -134,15 +134,27 @@ echo ""
 log_info "系统环境检查完成"
 echo ""
 
-log_info "请输入您的部署密钥（Deploy Key）："
+log_info "请输入您的部署密钥（SSH私钥内容）："
 log_info "如果您没有部署密钥，请联系开发者获取"
+log_info "提示：私钥通常以 '-----BEGIN OPENSSH PRIVATE KEY-----' 或 '-----BEGIN RSA PRIVATE KEY-----' 开头"
+log_info "请粘贴完整的私钥内容，输入完成后按 Ctrl+D 结束输入"
 echo ""
-echo -n "部署密钥（SSH私钥内容）："
-read -r DEPLOY_KEY
+
+DEPLOY_KEY=$(cat)
 
 if [ -z "$DEPLOY_KEY" ]; then
     log_error "部署密钥不能为空"
     exit 1
+fi
+
+if ! echo "$DEPLOY_KEY" | grep -qE "BEGIN (RSA|OPENSSH) PRIVATE KEY"; then
+    log_warn "私钥格式可能不正确，请确保粘贴的是完整的私钥文件内容"
+    log_info "是否继续？(y/n)"
+    read -r CONTINUE_KEY
+    if [ "$CONTINUE_KEY" != "y" ] && [ "$CONTINUE_KEY" != "Y" ]; then
+        log_info "退出部署"
+        exit 0
+    fi
 fi
 
 log_info "正在配置 SSH 密钥..."
