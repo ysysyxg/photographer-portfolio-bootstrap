@@ -215,7 +215,7 @@ log_info "正在验证代码完整性..."
 cd "$DEST_DIR"
 
 REQUIRED_FILES=(
-    "server/dist/index.js"
+    "server/dist/main.js"
     "web/.output/public/index.html"
     "version.json"
     "deploy/init.sh"
