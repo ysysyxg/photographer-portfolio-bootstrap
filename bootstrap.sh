@@ -160,9 +160,43 @@ fi
 log_success "核心代码拉取成功"
 
 echo ""
-log_info "正在执行初始化..."
+log_info "正在验证代码完整性..."
 
 cd "$DEST_DIR"
+
+REQUIRED_FILES=(
+    "server/dist/index.js"
+    "web/.output/public/index.html"
+    "version.json"
+    "deploy/init.sh"
+)
+
+MISSING_FILES=()
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        MISSING_FILES+=("$file")
+        log_error "缺失文件: $file"
+    else
+        log_success "验证通过: $file"
+    fi
+done
+
+if [ ${#MISSING_FILES[@]} -gt 0 ]; then
+    log_error "代码完整性验证失败，缺失 ${#MISSING_FILES[@]} 个关键文件"
+    log_warn "请检查私有仓库是否包含完整的构建产物"
+    log_info "是否继续部署？(y/n)"
+    read -r CONTINUE_DEPLOY
+    if [ "$CONTINUE_DEPLOY" != "y" ] && [ "$CONTINUE_DEPLOY" != "Y" ]; then
+        log_info "退出部署"
+        exit 0
+    fi
+else
+    log_success "代码完整性验证通过"
+fi
+
+echo ""
+log_info "正在执行初始化..."
 
 if [ -f "deploy/init.sh" ]; then
     log_info "执行部署初始化脚本..."
