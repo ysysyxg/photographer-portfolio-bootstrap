@@ -294,9 +294,9 @@ fi
 
 log_info "正在保存配置信息..."
 
-mkdir -p "$DEST_DIR/deploy"
+mkdir -p deploy
 
-cat > "$DEST_DIR/deploy/.deploy-config" <<EOF
+cat > deploy/.deploy-config <<EOF
 DOMAIN=$DOMAIN
 DB_TYPE=$DB_TYPE
 DB_HOST=${DB_HOST:-localhost}
@@ -311,9 +311,8 @@ log_success "配置信息已保存"
 echo ""
 log_info "正在执行初始化..."
 
-if [ -f "$DEST_DIR/deploy/init.sh" ]; then
+if [ -f "deploy/init.sh" ]; then
     log_info "执行部署初始化脚本..."
-    cd "$DEST_DIR"
     bash deploy/init.sh
 else
     log_info "执行标准初始化..."
