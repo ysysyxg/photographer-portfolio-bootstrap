@@ -1,0 +1,85 @@
+# 摄影师独立站 - 部署引导程序
+
+> 这是摄影师独立站的公开引导仓库，任何人都可以获取并运行部署引导脚本。
+
+## 🚀 快速开始
+
+### 步骤 1：获取引导脚本
+
+```bash
+git clone https://github.com/ysysyxg/photographer-portfolio-bootstrap.git
+cd photographer-portfolio-bootstrap
+```
+
+### 步骤 2：运行引导程序
+
+```bash
+bash bootstrap.sh
+```
+
+### 步骤 3：输入部署密钥
+
+引导程序会提示您输入部署密钥（Deploy Key）。如果您没有部署密钥，请联系开发者获取。
+
+## 📋 系统要求
+
+| 依赖 | 版本 |
+|------|------|
+| Node.js | v20.x LTS（推荐） |
+| npm | v10+ |
+| Git | 最新版本 |
+| MySQL | v8.0+（或 SQLite） |
+
+## 🔧 部署流程
+
+```
+1. 获取引导脚本（公开仓库，无需密钥）
+       ↓
+2. 运行 bootstrap.sh
+       ↓
+3. 环境检查（Node.js、npm、Git）
+       ↓
+4. 输入部署密钥（Deploy Key）
+       ↓
+5. 验证密钥 → 拉取私有仓库
+       ↓
+6. 执行初始化引导（/setup）
+       ↓
+7. 进入系统后验证授权
+```
+
+## 📁 仓库结构
+
+```
+photographer-portfolio-bootstrap/
+├── bootstrap.sh      # 部署引导脚本
+├── README.md         # 部署说明
+└── LICENSE           # 开源协议
+```
+
+## ❓ 常见问题
+
+### Q1：什么是部署密钥？
+
+部署密钥（Deploy Key）是 GitHub 仓库的 SSH 密钥，用于验证您有权限拉取私有仓库的代码。
+
+### Q2：如何获取部署密钥？
+
+联系开发者获取部署密钥，或者在 GitHub 仓库的 Settings → Deploy keys 中添加您的公钥。
+
+### Q3：部署密钥和 GitHub Token 有什么区别？
+
+- **部署密钥**：只能访问特定仓库，权限更细粒度
+- **GitHub Token**：可以访问所有仓库，权限更大
+
+### Q4：部署后如何访问后台？
+
+部署完成后，访问 `http://your-domain.com/admin/login` 登录后台。
+
+## 📞 联系我们
+
+如有任何问题，请联系开发者。
+
+## 📄 许可证
+
+MIT License
