@@ -294,6 +294,8 @@ fi
 
 log_info "正在保存配置信息..."
 
+mkdir -p "$DEST_DIR/deploy"
+
 cat > "$DEST_DIR/deploy/.deploy-config" <<EOF
 DOMAIN=$DOMAIN
 DB_TYPE=$DB_TYPE
