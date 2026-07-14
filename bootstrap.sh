@@ -246,10 +246,72 @@ else
 fi
 
 echo ""
+log_info "正在收集配置信息..."
+
+log_info "请输入您的域名（如：example.com）："
+read -r DOMAIN
+while [ -z "$DOMAIN" ]; do
+    log_error "域名不能为空"
+    read -r DOMAIN
+done
+
+log_info "请输入数据库类型（mysql/sqlite，默认：mysql）："
+read -r DB_TYPE
+DB_TYPE=${DB_TYPE:-mysql}
+
+if [ "$DB_TYPE" = "mysql" ]; then
+    log_info "请输入数据库主机（默认：localhost）："
+    read -r DB_HOST
+    DB_HOST=${DB_HOST:-localhost}
+
+    log_info "请输入数据库端口（默认：3306）："
+    read -r DB_PORT
+    DB_PORT=${DB_PORT:-3306}
+
+    log_info "请输入数据库名称："
+    read -r DB_NAME
+    while [ -z "$DB_NAME" ]; do
+        log_error "数据库名称不能为空"
+        read -r DB_NAME
+    done
+
+    log_info "请输入数据库用户名："
+    read -r DB_USER
+    while [ -z "$DB_USER" ]; do
+        log_error "数据库用户名不能为空"
+        read -r DB_USER
+    done
+
+    log_info "请输入数据库密码（输入时不显示）："
+    read -s -r DB_PASSWORD
+    echo ""
+    while [ -z "$DB_PASSWORD" ]; do
+        log_error "数据库密码不能为空"
+        read -s -r DB_PASSWORD
+        echo ""
+    done
+fi
+
+log_info "正在保存配置信息..."
+
+cat > "$DEST_DIR/deploy/.deploy-config" <<EOF
+DOMAIN=$DOMAIN
+DB_TYPE=$DB_TYPE
+DB_HOST=${DB_HOST:-localhost}
+DB_PORT=${DB_PORT:-3306}
+DB_NAME=${DB_NAME:-}
+DB_USER=${DB_USER:-}
+DB_PASSWORD=${DB_PASSWORD:-}
+EOF
+
+log_success "配置信息已保存"
+
+echo ""
 log_info "正在执行初始化..."
 
-if [ -f "deploy/init.sh" ]; then
+if [ -f "$DEST_DIR/deploy/init.sh" ]; then
     log_info "执行部署初始化脚本..."
+    cd "$DEST_DIR"
     bash deploy/init.sh
 else
     log_info "执行标准初始化..."
