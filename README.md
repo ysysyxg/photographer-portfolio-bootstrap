@@ -2,6 +2,63 @@
 
 > 这是摄影师独立站的公开引导仓库，任何人都可以获取并运行部署引导脚本。
 
+## 📋 前置准备
+
+在运行部署引导程序之前，请确保已完成以下准备工作：
+
+### 1. 创建空白数据库
+
+```bash
+# 登录 MySQL
+mysql -u root -p
+
+# 创建数据库
+CREATE DATABASE portfolio DEFAULT CHARACTER SET utf8mb4;
+
+# 创建数据库用户
+CREATE USER 'dbuser'@'localhost' IDENTIFIED BY 'your_password';
+
+# 授予权限
+GRANT ALL PRIVILEGES ON portfolio.* TO 'dbuser'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 2. 获取部署密钥（Deploy Key）
+
+**方法 A：联系开发者获取**
+- 联系开发者获取 SSH 私钥
+
+**方法 B：自行添加公钥到 GitHub**
+1. 在本地生成 SSH 密钥：
+   ```bash
+   ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+   ```
+2. 复制公钥：
+   ```bash
+   cat ~/.ssh/id_rsa.pub
+   ```
+3. 打开 GitHub 私有仓库 → Settings → Deploy keys
+4. 点击 Add deploy key
+5. 粘贴公钥，勾选 Allow write access（仅读取不需要）
+6. 点击 Add key
+
+### 3. 开放端口
+
+确保服务器已开放以下端口：
+- `3000` - 后端服务端口
+- `3001` - 前端开发端口
+- `80/443` - HTTP/HTTPS 端口
+
+### 4. 安装基础依赖
+
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install -y nodejs npm git mysql-server
+
+# CentOS/RHEL
+sudo yum install -y nodejs npm git mysql-server
+```
+
 ## 🚀 快速开始
 
 ### 步骤 1：获取引导脚本

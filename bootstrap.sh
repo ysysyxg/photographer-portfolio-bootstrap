@@ -57,6 +57,44 @@ echo "  摄影师独立站 · 部署引导程序"
 echo "========================================="
 echo ""
 
+echo ""
+echo "┌─────────────────────────────────────────┐"
+echo "│  前置准备清单                           │"
+echo "├─────────────────────────────────────────┤"
+echo "│  1. 已安装 MySQL 8.0+                   │"
+echo "│  2. 已创建空白数据库（如：portfolio）   │"
+echo "│  3. 已创建数据库用户（如：dbuser）      │"
+echo "│  4. 已获取部署密钥（Deploy Key）        │"
+echo "│  5. 服务器端口 3000/3001 已开放         │"
+echo "└─────────────────────────────────────────┘"
+echo ""
+
+log_info "如何获取部署密钥（Deploy Key）："
+log_info "  1. 联系开发者获取 SSH 私钥"
+log_info "  2. 或在 GitHub 仓库 Settings → Deploy keys 添加您的公钥"
+log_info "  3. 确保密钥具有仓库读取权限"
+echo ""
+
+log_info "如何创建空白数据库："
+log_info "  MySQL 命令："
+log_info "    CREATE DATABASE portfolio DEFAULT CHARACTER SET utf8mb4;"
+log_info "    CREATE USER 'dbuser'@'localhost' IDENTIFIED BY 'your_password';"
+log_info "    GRANT ALL PRIVILEGES ON portfolio.* TO 'dbuser'@'localhost';"
+log_info "    FLUSH PRIVILEGES;"
+echo ""
+
+log_info "是否已完成以上前置准备？(y/n)"
+read -r READY_CHECK
+
+if [ "$READY_CHECK" != "y" ] && [ "$READY_CHECK" != "Y" ]; then
+    log_info "请先完成前置准备，然后重新运行本脚本"
+    log_info "部署引导程序退出"
+    exit 0
+fi
+
+log_success "前置准备确认完成"
+echo ""
+
 log_info "正在检查系统环境..."
 
 MISSING_DEPS=()
