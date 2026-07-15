@@ -153,15 +153,47 @@ echo ""
 log_info "系统环境检查完成"
 echo ""
 
-log_info "请选择部署密钥方式："
-log_info "  1) 在服务器上生成新的 SSH 密钥对（推荐）"
-log_info "  2) 使用已有的 SSH 私钥"
-log_info "  3) 使用 GitHub Personal Access Token (PAT)"
-read -r KEY_MODE
-KEY_MODE=${KEY_MODE:-1}
-
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
+
+if [ -f ~/.ssh/id_ed25519 ]; then
+    log_info "检测到服务器上已存在 SSH 密钥对："
+    cat ~/.ssh/id_ed25519.pub
+    echo ""
+    log_info "是否使用已有的密钥对？(y/n)"
+    read -r USE_EXISTING_KEY
+    if [ "$USE_EXISTING_KEY" = "y" ] || [ "$USE_EXISTING_KEY" = "Y" ]; then
+        log_success "使用已有的 SSH 密钥对"
+        
+        log_info "正在配置 SSH 已知主机..."
+        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+        
+        log_info "正在测试 GitHub 连接..."
+        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
+            log_success "GitHub 连接成功"
+        else
+            log_warn "SSH 连接失败，请检查公钥是否已添加到 GitHub"
+            log_info "是否切换到其他方式？(y/n)"
+            read -r SWITCH_MODE
+            if [ "$SWITCH_MODE" = "y" ] || [ "$SWITCH_MODE" = "Y" ]; then
+                KEY_MODE=""
+            else
+                exit 1
+            fi
+        fi
+    else
+        KEY_MODE=""
+    fi
+fi
+
+if [ -z "$KEY_MODE" ]; then
+    log_info "请选择部署密钥方式："
+    log_info "  1) 在服务器上生成新的 SSH 密钥对（推荐）"
+    log_info "  2) 使用已有的 SSH 私钥"
+    log_info "  3) 使用 GitHub Personal Access Token (PAT)"
+    read -r KEY_MODE
+    KEY_MODE=${KEY_MODE:-1}
+fi
 
 if [ "$KEY_MODE" = "1" ]; then
     log_info "正在生成 SSH 密钥对..."
