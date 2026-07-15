@@ -156,6 +156,8 @@ echo ""
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
+AUTH_SUCCESS=false
+
 if [ -f ~/.ssh/id_ed25519 ]; then
     log_info "检测到服务器上已存在 SSH 密钥对："
     cat ~/.ssh/id_ed25519.pub
@@ -171,22 +173,19 @@ if [ -f ~/.ssh/id_ed25519 ]; then
         log_info "正在测试 GitHub 连接..."
         if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
             log_success "GitHub 连接成功"
+            AUTH_SUCCESS=true
         else
             log_warn "SSH 连接失败，请检查公钥是否已添加到 GitHub"
             log_info "是否切换到其他方式？(y/n)"
             read -r SWITCH_MODE
-            if [ "$SWITCH_MODE" = "y" ] || [ "$SWITCH_MODE" = "Y" ]; then
-                KEY_MODE=""
-            else
+            if [ "$SWITCH_MODE" != "y" ] && [ "$SWITCH_MODE" != "Y" ]; then
                 exit 1
             fi
         fi
-    else
-        KEY_MODE=""
     fi
 fi
 
-if [ -z "$KEY_MODE" ]; then
+if [ "$AUTH_SUCCESS" = false ]; then
     log_info "请选择部署密钥方式："
     log_info "  1) 在服务器上生成新的 SSH 密钥对（推荐）"
     log_info "  2) 使用已有的 SSH 私钥"
@@ -195,81 +194,82 @@ if [ -z "$KEY_MODE" ]; then
     KEY_MODE=${KEY_MODE:-1}
 fi
 
-if [ "$KEY_MODE" = "1" ]; then
-    log_info "正在生成 SSH 密钥对..."
-    ssh-keygen -t ed25519 -C "${USER_NICKNAME}@${DOMAIN}" -f ~/.ssh/id_ed25519 -N ""
-    chmod 600 ~/.ssh/id_ed25519
-    
-    log_success "SSH 密钥对生成成功！"
-    echo ""
-    echo "========================================================"
-    echo "  请将以下部署密钥（公钥）发给开发者："
-    echo "========================================================"
-    cat ~/.ssh/id_ed25519.pub
-    echo "========================================================"
-    echo ""
-    log_info "操作说明："
-    log_info "  1. 复制上面的公钥内容"
-    log_info "  2. 将公钥发送给开发者，由开发者添加到 GitHub 仓库"
-    log_info "  3. 开发者添加完成后，在下方输入 y 继续"
-    echo ""
-    log_info "开发者已将公钥添加到 GitHub？(y/n)"
-    read -r KEY_ADDED
-    if [ "$KEY_ADDED" != "y" ] && [ "$KEY_ADDED" != "Y" ]; then
-        log_info "请先添加公钥，然后重新运行本脚本"
-        exit 0
-    fi
-    
-    log_info "正在配置 SSH 已知主机..."
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-    
-    log_info "正在测试 GitHub 连接..."
-    if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
-        log_success "GitHub 连接成功"
-    else
-        log_error "SSH 连接失败，请检查公钥是否已正确添加"
-        exit 1
-    fi
-    
-elif [ "$KEY_MODE" = "2" ]; then
-    log_info "请输入您的部署密钥（SSH私钥内容）："
-    log_info "提示：私钥通常以 '-----BEGIN OPENSSH PRIVATE KEY-----' 或 '-----BEGIN RSA PRIVATE KEY-----' 开头"
-    log_info "请粘贴完整的私钥内容，输入完成后按 Ctrl+D 结束输入"
-    echo ""
-    
-    DEPLOY_KEY=$(cat)
-    
-    if [ -z "$DEPLOY_KEY" ]; then
-        log_error "部署密钥不能为空"
-        exit 1
-    fi
-    
-    if ! echo "$DEPLOY_KEY" | grep -qE "BEGIN (RSA|OPENSSH|ED25519) PRIVATE KEY"; then
-        log_warn "私钥格式可能不正确，请确保粘贴的是完整的私钥文件内容"
-        log_info "是否继续？(y/n)"
-        read -r CONTINUE_KEY
-        if [ "$CONTINUE_KEY" != "y" ] && [ "$CONTINUE_KEY" != "Y" ]; then
-            log_info "退出部署"
+if [ "$AUTH_SUCCESS" = false ]; then
+    if [ "$KEY_MODE" = "1" ]; then
+        log_info "正在生成 SSH 密钥对..."
+        ssh-keygen -t ed25519 -C "${USER_NICKNAME}@${DOMAIN}" -f ~/.ssh/id_ed25519 -N ""
+        chmod 600 ~/.ssh/id_ed25519
+        
+        log_success "SSH 密钥对生成成功！"
+        echo ""
+        echo "========================================================"
+        echo "  请将以下部署密钥（公钥）发给开发者："
+        echo "========================================================"
+        cat ~/.ssh/id_ed25519.pub
+        echo "========================================================"
+        echo ""
+        log_info "操作说明："
+        log_info "  1. 复制上面的公钥内容"
+        log_info "  2. 将公钥发送给开发者，由开发者添加到 GitHub 仓库"
+        log_info "  3. 开发者添加完成后，在下方输入 y 继续"
+        echo ""
+        log_info "开发者已将公钥添加到 GitHub？(y/n)"
+        read -r KEY_ADDED
+        if [ "$KEY_ADDED" != "y" ] && [ "$KEY_ADDED" != "Y" ]; then
+            log_info "请先添加公钥，然后重新运行本脚本"
             exit 0
+        fi
+        
+        log_info "正在配置 SSH 已知主机..."
+        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+        
+        log_info "正在测试 GitHub 连接..."
+        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
+            log_success "GitHub 连接成功"
+        else
+            log_error "SSH 连接失败，请检查公钥是否已正确添加"
+            exit 1
+        fi
+        
+    elif [ "$KEY_MODE" = "2" ]; then
+        log_info "请输入您的部署密钥（SSH私钥内容）："
+        log_info "提示：私钥通常以 '-----BEGIN OPENSSH PRIVATE KEY-----' 或 '-----BEGIN RSA PRIVATE KEY-----' 开头"
+        log_info "请粘贴完整的私钥内容，输入完成后按 Ctrl+D 结束输入"
+        echo ""
+        
+        DEPLOY_KEY=$(cat)
+        
+        if [ -z "$DEPLOY_KEY" ]; then
+            log_error "部署密钥不能为空"
+            exit 1
+        fi
+        
+        if ! echo "$DEPLOY_KEY" | grep -qE "BEGIN (RSA|OPENSSH|ED25519) PRIVATE KEY"; then
+            log_warn "私钥格式可能不正确，请确保粘贴的是完整的私钥文件内容"
+            log_info "是否继续？(y/n)"
+            read -r CONTINUE_KEY
+            if [ "$CONTINUE_KEY" != "y" ] && [ "$CONTINUE_KEY" != "Y" ]; then
+                log_info "退出部署"
+                exit 0
+            fi
+        fi
+        
+        echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        
+        log_info "正在配置 SSH 已知主机..."
+        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+        
+        log_info "正在测试 GitHub 连接..."
+        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
+            log_success "GitHub 连接成功"
+        else
+            log_warn "SSH 连接失败，尝试使用 HTTPS 方式..."
+            KEY_MODE="3"
         fi
     fi
     
-    echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
-    chmod 600 ~/.ssh/id_rsa
-    
-    log_info "正在配置 SSH 已知主机..."
-    ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-    
-    log_info "正在测试 GitHub 连接..."
-    if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
-        log_success "GitHub 连接成功"
-    else
-        log_warn "SSH 连接失败，尝试使用 HTTPS 方式..."
-        KEY_MODE="3"
-    fi
-fi
-
-if [ "$KEY_MODE" = "3" ]; then
+    if [ "$KEY_MODE" = "3" ]; then
     log_info "请输入您的 GitHub Personal Access Token（用于 HTTPS 方式）："
     echo -n "PAT："
     read -r GITHUB_TOKEN
@@ -280,6 +280,7 @@ if [ "$KEY_MODE" = "3" ]; then
     else
         log_error "无法连接到私有仓库，请提供 GitHub PAT"
         exit 1
+    fi
     fi
 fi
 
