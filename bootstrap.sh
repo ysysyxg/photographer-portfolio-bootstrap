@@ -309,28 +309,61 @@ EOF
 log_success "配置信息已保存"
 
 echo ""
+log_info "请选择部署模式："
+log_info "  1) 宝塔面板（推荐，支持可视化管理）"
+log_info "  2) 标准部署（纯净服务器，手动配置）"
+read -r DEPLOY_MODE
+DEPLOY_MODE=${DEPLOY_MODE:-1}
+
+echo ""
 log_info "正在执行初始化..."
 
-if [ -f "deploy/init.sh" ]; then
-    log_info "执行部署初始化脚本..."
-    bash deploy/init.sh
+if [ "$DEPLOY_MODE" = "1" ]; then
+    log_info "使用宝塔面板部署模式..."
+    
+    if [ -f "deploy/bt-deploy.sh" ]; then
+        log_info "执行宝塔面板部署脚本..."
+        bash deploy/bt-deploy.sh "$DOMAIN" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
+    else
+        log_error "宝塔面板部署脚本未找到，请检查私有仓库"
+        log_info "是否切换到标准部署模式？(y/n)"
+        read -r SWITCH_MODE
+        if [ "$SWITCH_MODE" = "y" ] || [ "$SWITCH_MODE" = "Y" ]; then
+            if [ -f "deploy/init.sh" ]; then
+                bash deploy/init.sh
+            else
+                log_info "请手动编辑 server/.env 文件，配置数据库连接信息"
+                log_info "然后运行：npm run start"
+            fi
+        else
+            log_info "退出部署"
+            exit 0
+        fi
+    fi
 else
-    log_info "执行标准初始化..."
+    log_info "使用标准部署模式..."
     
-    log_info "复制环境变量配置..."
-    cp server/.env.example server/.env
-    
-    log_info "修改环境变量配置..."
-    log_info "请手动编辑 server/.env 文件，配置数据库连接信息"
-    log_info "然后运行：npm run start"
-    
-    log_success "部署引导完成！"
-    echo ""
-    echo "========================================="
-    echo "  下一步操作："
-    echo "========================================="
-    echo "  1. 编辑 server/.env 配置数据库"
-    echo "  2. 运行 npm run start 启动服务"
-    echo "  3. 访问 http://localhost:3001/setup 完成初始化"
-    echo "========================================="
+    if [ -f "deploy/init.sh" ]; then
+        log_info "执行部署初始化脚本..."
+        bash deploy/init.sh
+    else
+        log_info "执行标准初始化..."
+        
+        log_info "复制环境变量配置..."
+        cp server/.env.example server/.env
+        
+        log_info "修改环境变量配置..."
+        log_info "请手动编辑 server/.env 文件，配置数据库连接信息"
+        log_info "然后运行：npm run start"
+        
+        log_success "部署引导完成！"
+        echo ""
+        echo "========================================="
+        echo "  下一步操作："
+        echo "========================================="
+        echo "  1. 编辑 server/.env 配置数据库"
+        echo "  2. 运行 npm run start 启动服务"
+        echo "  3. 访问 http://localhost:3001/setup 完成初始化"
+        echo "========================================="
+    fi
 fi
