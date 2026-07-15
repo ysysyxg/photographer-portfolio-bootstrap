@@ -287,7 +287,12 @@ fi
 echo ""
 log_info "正在拉取核心代码..."
 
-DEST_DIR="photographer-portfolio"
+BOOTSTRAP_DIR="/www/wwwroot/bootstrap"
+DEST_DIR="$BOOTSTRAP_DIR/photographer-portfolio"
+
+mkdir -p "$BOOTSTRAP_DIR"
+chown -R www:www "$BOOTSTRAP_DIR" 2>/dev/null || true
+
 if [ -d "$DEST_DIR" ]; then
     log_warn "目录 $DEST_DIR 已存在，是否覆盖？(y/n)"
     read -r OVERWRITE
