@@ -106,12 +106,18 @@ done
 
 log_info "请输入要部署的域名（如：example.com）："
 read -r DOMAIN
-while [ -z "$DOMAIN" ]; do
-    log_error "域名不能为空"
+while [ -z "$DOMAIN" ] || ! echo "$DOMAIN" | grep -qE '^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$'; do
+    if [ -z "$DOMAIN" ]; then
+        log_error "域名不能为空"
+    else
+        log_error "域名格式不正确: $DOMAIN"
+        log_error "正确格式示例: example.com, xiaofan.live"
+    fi
     read -r DOMAIN
 done
 
 log_success "部署信息收集完成"
+log_success "域名：${DOMAIN}"
 echo ""
 
 log_info "正在检查系统环境..."
