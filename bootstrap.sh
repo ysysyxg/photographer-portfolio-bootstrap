@@ -95,6 +95,25 @@ fi
 log_success "前置准备确认完成"
 echo ""
 
+log_info "正在收集部署信息..."
+
+log_info "请输入您的昵称（用于标识部署）："
+read -r USER_NICKNAME
+while [ -z "$USER_NICKNAME" ]; do
+    log_error "昵称不能为空"
+    read -r USER_NICKNAME
+done
+
+log_info "请输入要部署的域名（如：example.com）："
+read -r DOMAIN
+while [ -z "$DOMAIN" ]; do
+    log_error "域名不能为空"
+    read -r DOMAIN
+done
+
+log_success "部署信息收集完成"
+echo ""
+
 log_info "正在检查系统环境..."
 
 MISSING_DEPS=()
@@ -146,7 +165,7 @@ chmod 700 ~/.ssh
 
 if [ "$KEY_MODE" = "1" ]; then
     log_info "正在生成 SSH 密钥对..."
-    ssh-keygen -t ed25519 -C "deploy@${HOSTNAME}" -f ~/.ssh/id_ed25519 -N ""
+    ssh-keygen -t ed25519 -C "${USER_NICKNAME}@${DOMAIN}" -f ~/.ssh/id_ed25519 -N ""
     chmod 600 ~/.ssh/id_ed25519
     
     log_success "SSH 密钥对生成成功！"
@@ -295,12 +314,7 @@ fi
 echo ""
 log_info "正在收集配置信息..."
 
-log_info "请输入您的域名（如：example.com）："
-read -r DOMAIN
-while [ -z "$DOMAIN" ]; do
-    log_error "域名不能为空"
-    read -r DOMAIN
-done
+log_success "域名：${DOMAIN}"
 
 log_info "请输入数据库类型（mysql/sqlite，默认：mysql）："
 read -r DB_TYPE
