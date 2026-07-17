@@ -6,7 +6,7 @@ set -e
 # 在全新的 Ubuntu 服务器上执行，自动完成所有部署步骤
 #
 # 使用方法：
-#   bash <(curl -fsSL https://raw.githubusercontent.com/ysysyxg/photographer-portfolio-bootstrap/main/one-click-deploy.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/ysysyxg/photographer-portfolio-bootstrap/main/one-click-deploy.sh) <domain> <db_name> <db_user> <db_password>
 #   或
 #   bash deploy/one-click-deploy.sh your-domain.com
 # =============================================================================
@@ -44,6 +44,9 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 DOMAIN="${1:-}"
+DB_NAME="${2:-}"
+DB_USER="${3:-}"
+DB_PASSWORD="${4:-}"
 PROJECT_NAME="photographer-portfolio"
 PROJECT_DIR="/www/wwwroot/${DOMAIN:-portfolio}"
 BOOTSTRAP_REPO="https://github.com/ysysyxg/photographer-portfolio-bootstrap.git"
@@ -135,21 +138,26 @@ log "步骤5/7: 配置数据库..."
 
 cd "${PROJECT_DIR}"
 
-read -p "数据库类型（mysql/sqlite，默认：mysql）: " DB_TYPE
-DB_TYPE=${DB_TYPE:-mysql}
+DB_TYPE="mysql"
+DB_HOST="localhost"
+DB_PORT="3306"
 
-if [[ "${DB_TYPE}" == "mysql" ]]; then
-    read -p "数据库主机（默认：localhost）: " DB_HOST
-    DB_HOST=${DB_HOST:-localhost}
+if [[ -n "${DB_NAME}" && -n "${DB_USER}" && -n "${DB_PASSWORD}" ]]; then
+    log "使用命令行参数配置数据库..."
+    log "数据库名称: ${DB_NAME}"
+    log "数据库用户: ${DB_USER}"
+else
+    read -p "数据库名称: " DB_NAME
+    while [[ -z "${DB_NAME}" ]]; do
+        error "数据库名称不能为空"
+        read -p "数据库名称: " DB_NAME
+    done
 
-    read -p "数据库端口（默认：3306）: " DB_PORT
-    DB_PORT=${DB_PORT:-3306}
-
-    read -p "数据库名称（默认：portfolio）: " DB_NAME
-    DB_NAME=${DB_NAME:-portfolio}
-
-    read -p "数据库用户名（默认：portfolio）: " DB_USER
-    DB_USER=${DB_USER:-portfolio}
+    read -p "数据库用户名: " DB_USER
+    while [[ -z "${DB_USER}" ]]; do
+        error "数据库用户名不能为空"
+        read -p "数据库用户名: " DB_USER
+    done
 
     echo "提示：密码输入时默认不显示，直接输入后按回车即可"
     read -s -p "数据库密码: " DB_PASSWORD
@@ -159,24 +167,17 @@ if [[ "${DB_TYPE}" == "mysql" ]]; then
         read -s -p "数据库密码: " DB_PASSWORD
         echo ""
     done
+fi
 
-    log "正在测试数据库连接..."
-    if command -v mysql >/dev/null 2>&1; then
-        if mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASSWORD}" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
-            success "数据库连接成功"
-        else
-            fail "数据库连接失败，请检查配置"
-        fi
+log "正在测试数据库连接..."
+if command -v mysql >/dev/null 2>&1; then
+    if mysql -h"${DB_HOST}" -P"${DB_PORT}" -u"${DB_USER}" -p"${DB_PASSWORD}" -e "USE ${DB_NAME};" >/dev/null 2>&1; then
+        success "数据库连接成功"
     else
-        warn "未安装 mysql 客户端，跳过连接测试"
+        fail "数据库连接失败，请检查配置"
     fi
 else
-    DB_HOST=""
-    DB_PORT=""
-    DB_NAME=""
-    DB_USER=""
-    DB_PASSWORD=""
-    success "使用 SQLite 数据库"
+    warn "未安装 mysql 客户端，跳过连接测试"
 fi
 
 cat > "${PROJECT_DIR}/server/.env" <<EOF
