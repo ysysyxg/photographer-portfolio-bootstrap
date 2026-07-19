@@ -141,8 +141,9 @@ install_node_deps() {
         
         log_info "配置 npm 国内镜像..."
         npm config set registry https://registry.npmmirror.com/
-        npm config set disturl https://npmmirror.com/mirrors/node/
-        npm config set node_gyp https://npmmirror.com/mirrors/node-gyp/
+        export NODE_OPTIONS="--dns-result-order=ipv4first"
+        export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
+        export PYTHON_MIRROR="https://npmmirror.com/mirrors/python/"
         
         if [ -f "package-lock.json" ]; then
             npm ci --omit=dev 2>/dev/null || npm install --omit=dev
