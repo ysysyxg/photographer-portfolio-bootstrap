@@ -25,62 +25,38 @@ log_error() {
 }
 
 PRIV_REPO_URL="git@github.com:ysysyxg/photographer-portfolio.git"
-PRIV_REPO_HTTPS="https://github.com/ysysyxg/photographer-portfolio.git"
-
-check_dependency() {
-    if command -v "$1" &> /dev/null; then
-        log_success "$1 已安装"
-        return 0
-    else
-        log_error "$1 未安装"
-        return 1
-    fi
-}
-
-install_dependency() {
-    if [ -f /etc/debian_version ]; then
-        log_info "检测到 Debian/Ubuntu 系统"
-        sudo apt update -y
-        sudo apt install -y "$1"
-    elif [ -f /etc/redhat-release ]; then
-        log_info "检测到 CentOS/RHEL 系统"
-        sudo yum install -y "$1"
-    else
-        log_error "不支持的操作系统"
-        exit 1
-    fi
-}
 
 echo ""
 echo "========================================="
-echo "  摄影师独立站 · 部署引导程序"
+echo "  摄影师独立站 · 宝塔面板部署引导"
 echo "========================================="
 echo ""
 
 echo ""
 echo "┌─────────────────────────────────────────┐"
-echo "│  前置准备清单                           │"
+echo "│  前置准备清单（宝塔面板环境）            │"
 echo "├─────────────────────────────────────────┤"
-echo "│  1. 已安装 MySQL 8.0+                   │"
-echo "│  2. 已创建空白数据库（如：portfolio）   │"
-echo "│  3. 已创建数据库用户（如：dbuser）      │"
-echo "│  4. 已获取部署密钥（Deploy Key）        │"
-echo "│  5. 服务器端口 3000/3001 已开放         │"
+echo "│  1. 已安装宝塔面板                      │"
+echo "│  2. 已安装 Node.js 20.x LTS            │"
+echo "│  3. 已安装 PM2                         │"
+echo "│  4. 已创建空白数据库（如：portfolio）   │"
+echo "│  5. 已创建数据库用户（如：dbuser）      │"
+echo "│  6. 已添加 SSH 公钥到 GitHub Deploy Keys│"
 echo "└─────────────────────────────────────────┘"
 echo ""
 
-log_info "如何获取部署密钥（Deploy Key）："
-log_info "  1. 联系开发者获取 SSH 私钥"
-log_info "  2. 或在 GitHub 仓库 Settings → Deploy keys 添加您的公钥"
-log_info "  3. 确保密钥具有仓库读取权限"
+log_info "如何创建数据库："
+log_info "  1. 登录宝塔面板 → 数据库 → 添加数据库"
+log_info "  2. 数据库名：portfolio（或自定义）"
+log_info "  3. 用户名：dbuser（或自定义）"
+log_info "  4. 设置密码并记录下来"
 echo ""
 
-log_info "如何创建空白数据库："
-log_info "  MySQL 命令："
-log_info "    CREATE DATABASE portfolio DEFAULT CHARACTER SET utf8mb4;"
-log_info "    CREATE USER 'dbuser'@'localhost' IDENTIFIED BY 'your_password';"
-log_info "    GRANT ALL PRIVILEGES ON portfolio.* TO 'dbuser'@'localhost';"
-log_info "    FLUSH PRIVILEGES;"
+log_info "如何添加 SSH 公钥到 GitHub："
+log_info "  1. 在宝塔面板终端执行：cat ~/.ssh/id_ed25519.pub"
+log_info "  2. 复制公钥内容"
+log_info "  3. 打开 https://github.com/ysysyxg/photographer-portfolio/settings/keys"
+log_info "  4. 点击 Add deploy key，粘贴公钥，勾选 Allow write access"
 echo ""
 
 log_info "是否已完成以上前置准备？(y/n)"
@@ -96,13 +72,6 @@ log_success "前置准备确认完成"
 echo ""
 
 log_info "正在收集部署信息..."
-
-log_info "请输入您的昵称（用于标识部署）："
-read -r USER_NICKNAME
-while [ -z "$USER_NICKNAME" ]; do
-    log_error "昵称不能为空"
-    read -r USER_NICKNAME
-done
 
 log_info "请输入要部署的域名（如：example.com）："
 read -r DOMAIN
@@ -124,180 +93,95 @@ log_info "正在检查系统环境..."
 
 MISSING_DEPS=()
 
-check_dependency "node" || MISSING_DEPS+=("nodejs")
-check_dependency "npm" || MISSING_DEPS+=("npm")
-check_dependency "git" || MISSING_DEPS+=("git")
-check_dependency "mysql" || log_warn "MySQL 未安装，请确保已安装并创建空数据库"
-
-if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
-    log_info "正在安装缺失的依赖: ${MISSING_DEPS[*]}"
-    for dep in "${MISSING_DEPS[@]}"; do
-        install_dependency "$dep"
-    done
-fi
-
-log_info "正在检查 Node.js 版本..."
-NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1)
-if [ -z "$NODE_VERSION" ]; then
-    log_error "Node.js 未安装或版本获取失败"
-    exit 1
-fi
-
-if [ "$NODE_VERSION" -lt 20 ]; then
-    log_warn "当前 Node.js 版本 v${NODE_VERSION}.x，推荐使用 v20.x LTS"
-    log_info "是否升级 Node.js 到 v20.x？(y/n)"
-    read -r UPGRADE_NODE
-    if [ "$UPGRADE_NODE" = "y" ] || [ "$UPGRADE_NODE" = "Y" ]; then
-        log_info "正在升级 Node.js..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
-        sudo apt install -y nodejs
-        log_success "Node.js 升级完成"
+if ! command -v node &> /dev/null; then
+    MISSING_DEPS+=("nodejs")
+else
+    NODE_VERSION=$(node --version 2>/dev/null | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        log_warn "当前 Node.js 版本 v${NODE_VERSION}.x，推荐使用 v20.x LTS"
+        log_info "请在宝塔面板软件商店中升级 Node.js"
+    else
+        log_success "Node.js v${NODE_VERSION}.x 已安装"
     fi
 fi
 
-echo ""
+if ! command -v npm &> /dev/null; then
+    MISSING_DEPS+=("npm")
+else
+    log_success "npm 已安装"
+fi
+
+if ! command -v git &> /dev/null; then
+    MISSING_DEPS+=("git")
+else
+    log_success "git 已安装"
+fi
+
+if ! command -v pm2 &> /dev/null; then
+    log_warn "PM2 未安装，正在安装..."
+    npm install -g pm2
+    log_success "PM2 安装完成"
+fi
+
+if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
+    log_error "缺少必要依赖: ${MISSING_DEPS[*]}"
+    log_info "请在宝塔面板软件商店中安装以上依赖"
+    exit 1
+fi
+
 log_info "系统环境检查完成"
 echo ""
+
+log_info "正在验证 SSH 密钥授权..."
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
+ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
+MAX_RETRIES=5
+RETRY_DELAY=5
 AUTH_SUCCESS=false
 
-if [ -f ~/.ssh/id_ed25519 ]; then
-    log_info "检测到服务器上已存在 SSH 密钥对："
-    cat ~/.ssh/id_ed25519.pub
-    echo ""
-    log_info "是否使用已有的密钥对？(y/n)"
-    read -r USE_EXISTING_KEY
-    if [ "$USE_EXISTING_KEY" = "y" ] || [ "$USE_EXISTING_KEY" = "Y" ]; then
-        log_success "使用已有的 SSH 密钥对"
-        
-        log_info "正在配置 SSH 已知主机..."
-        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-        
-        log_info "正在测试 GitHub 连接..."
-        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
-            log_success "GitHub 连接成功"
-            AUTH_SUCCESS=true
-        else
-            log_warn "SSH 连接失败，请检查公钥是否已添加到 GitHub"
-            log_info "是否切换到其他方式？(y/n)"
-            read -r SWITCH_MODE
-            if [ "$SWITCH_MODE" != "y" ] && [ "$SWITCH_MODE" != "Y" ]; then
-                exit 1
-            fi
-        fi
+for ((i=1; i<=MAX_RETRIES; i++)); do
+    if ssh -T git@github.com -o StrictHostKeyChecking=no 2>&1 | grep -q "successfully authenticated"; then
+        log_success "SSH 密钥授权验证成功"
+        AUTH_SUCCESS=true
+        break
     fi
-fi
+    if [ $i -lt $MAX_RETRIES ]; then
+        log_warn "SSH 认证失败，第 ${i}/${MAX_RETRIES} 次尝试，等待 ${RETRY_DELAY} 秒后重试..."
+        sleep $RETRY_DELAY
+    fi
+done
 
 if [ "$AUTH_SUCCESS" = false ]; then
-    log_info "请选择部署密钥方式："
-    log_info "  1) 在服务器上生成新的 SSH 密钥对（推荐）"
-    log_info "  2) 使用已有的 SSH 私钥"
-    log_info "  3) 使用 GitHub Personal Access Token (PAT)"
-    read -r KEY_MODE
-    KEY_MODE=${KEY_MODE:-1}
+    log_error "SSH 密钥授权验证失败"
+    log_info "请检查："
+    log_info "  1. 服务器公钥是否已添加到 GitHub Deploy Keys"
+    log_info "  2. 是否勾选了 Allow write access"
+    log_info "  3. SSH 密钥是否设置了密码（本脚本不支持有密码的密钥）"
+    log_info ""
+    log_info "在宝塔面板终端执行以下命令生成新密钥："
+    log_info "  ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N \"\""
+    log_info "  cat ~/.ssh/id_ed25519.pub"
+    exit 1
 fi
 
-if [ "$AUTH_SUCCESS" = false ]; then
-    if [ "$KEY_MODE" = "1" ]; then
-        log_info "正在生成 SSH 密钥对..."
-        ssh-keygen -t ed25519 -C "${USER_NICKNAME}@${DOMAIN}" -f ~/.ssh/id_ed25519 -N ""
-        chmod 600 ~/.ssh/id_ed25519
-        
-        log_success "SSH 密钥对生成成功！"
-        echo ""
-        echo "========================================================"
-        echo "  请将以下部署密钥（公钥）发给开发者："
-        echo "========================================================"
-        cat ~/.ssh/id_ed25519.pub
-        echo "========================================================"
-        echo ""
-        log_info "操作说明："
-        log_info "  1. 复制上面的公钥内容"
-        log_info "  2. 将公钥发送给开发者，由开发者添加到 GitHub 仓库"
-        log_info "  3. 开发者添加完成后，在下方输入 y 继续"
-        echo ""
-        log_info "开发者已将公钥添加到 GitHub？(y/n)"
-        read -r KEY_ADDED
-        if [ "$KEY_ADDED" != "y" ] && [ "$KEY_ADDED" != "Y" ]; then
-            log_info "请先添加公钥，然后重新运行本脚本"
-            exit 0
-        fi
-        
-        log_info "正在配置 SSH 已知主机..."
-        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-        
-        log_info "正在测试 GitHub 连接..."
-        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
-            log_success "GitHub 连接成功"
-        else
-            log_error "SSH 连接失败，请检查公钥是否已正确添加"
-            exit 1
-        fi
-        
-    elif [ "$KEY_MODE" = "2" ]; then
-        log_info "请输入您的部署密钥（SSH私钥内容）："
-        log_info "提示：私钥通常以 '-----BEGIN OPENSSH PRIVATE KEY-----' 或 '-----BEGIN RSA PRIVATE KEY-----' 开头"
-        log_info "请粘贴完整的私钥内容，输入完成后按 Ctrl+D 结束输入"
-        echo ""
-        
-        DEPLOY_KEY=$(cat)
-        
-        if [ -z "$DEPLOY_KEY" ]; then
-            log_error "部署密钥不能为空"
-            exit 1
-        fi
-        
-        if ! echo "$DEPLOY_KEY" | grep -qE "BEGIN (RSA|OPENSSH|ED25519) PRIVATE KEY"; then
-            log_warn "私钥格式可能不正确，请确保粘贴的是完整的私钥文件内容"
-            log_info "是否继续？(y/n)"
-            read -r CONTINUE_KEY
-            if [ "$CONTINUE_KEY" != "y" ] && [ "$CONTINUE_KEY" != "Y" ]; then
-                log_info "退出部署"
-                exit 0
-            fi
-        fi
-        
-        echo "$DEPLOY_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        
-        log_info "正在配置 SSH 已知主机..."
-        ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null || true
-        
-        log_info "正在测试 GitHub 连接..."
-        if ssh -T git@github.com 2>&1 | grep -q "ysysyxg"; then
-            log_success "GitHub 连接成功"
-        else
-            log_warn "SSH 连接失败，尝试使用 HTTPS 方式..."
-            KEY_MODE="3"
-        fi
-    fi
-    
-    if [ "$KEY_MODE" = "3" ]; then
-    log_info "请输入您的 GitHub Personal Access Token（用于 HTTPS 方式）："
-    echo -n "PAT："
-    read -r GITHUB_TOKEN
-    
-    if [ -n "$GITHUB_TOKEN" ]; then
-        PRIV_REPO_URL="https://${GITHUB_TOKEN}@github.com/ysysyxg/photographer-portfolio.git"
-        log_success "PAT 已配置"
-    else
-        log_error "无法连接到私有仓库，请提供 GitHub PAT"
-        exit 1
-    fi
-    fi
+log_info "正在验证私有库访问权限..."
+if git ls-remote "$PRIV_REPO_URL" >/dev/null 2>&1; then
+    log_success "私有库访问权限验证成功"
+else
+    log_error "无法访问私有库"
+    log_info "请确保 GitHub Deploy Key 已添加到仓库："
+    log_info "  https://github.com/ysysyxg/photographer-portfolio/settings/keys"
+    exit 1
 fi
 
 echo ""
 log_info "正在拉取核心代码..."
 
-BOOTSTRAP_DIR="/www/wwwroot/bootstrap"
-DEST_DIR="$BOOTSTRAP_DIR/photographer-portfolio"
-
-mkdir -p "$BOOTSTRAP_DIR"
-chown -R www:www "$BOOTSTRAP_DIR" 2>/dev/null || true
+DEST_DIR="/www/wwwroot/${DOMAIN}"
 
 if [ -d "$DEST_DIR" ]; then
     log_warn "目录 $DEST_DIR 已存在，是否覆盖？(y/n)"
@@ -328,7 +212,7 @@ REQUIRED_FILES=(
     "server/dist/main.js"
     "web/.output/public/index.html"
     "version.json"
-    "deploy/init.sh"
+    "deploy/bt-deploy.sh"
 )
 
 MISSING_FILES=()
@@ -344,21 +228,14 @@ done
 
 if [ ${#MISSING_FILES[@]} -gt 0 ]; then
     log_error "代码完整性验证失败，缺失 ${#MISSING_FILES[@]} 个关键文件"
-    log_warn "请检查私有仓库是否包含完整的构建产物"
-    log_info "是否继续部署？(y/n)"
-    read -r CONTINUE_DEPLOY
-    if [ "$CONTINUE_DEPLOY" != "y" ] && [ "$CONTINUE_DEPLOY" != "Y" ]; then
-        log_info "退出部署"
-        exit 0
-    fi
+    log_info "请联系开发者检查私有仓库"
+    exit 1
 else
     log_success "代码完整性验证通过"
 fi
 
 echo ""
-log_info "正在收集配置信息..."
-
-log_success "域名：${DOMAIN}"
+log_info "正在收集数据库配置..."
 
 log_info "请输入数据库类型（mysql/sqlite，默认：mysql）："
 read -r DB_TYPE
@@ -397,78 +274,27 @@ if [ "$DB_TYPE" = "mysql" ]; then
     done
 fi
 
-log_info "正在保存配置信息..."
-
-mkdir -p deploy
-
-cat > deploy/.deploy-config <<EOF
-DOMAIN=$DOMAIN
-DB_TYPE=$DB_TYPE
-DB_HOST=${DB_HOST:-localhost}
-DB_PORT=${DB_PORT:-3306}
-DB_NAME=${DB_NAME:-}
-DB_USER=${DB_USER:-}
-DB_PASSWORD=${DB_PASSWORD:-}
-EOF
-
-log_success "配置信息已保存"
-
 echo ""
-log_info "请选择部署模式："
-log_info "  1) 宝塔面板（推荐，支持可视化管理）"
-log_info "  2) 标准部署（纯净服务器，手动配置）"
-read -r DEPLOY_MODE
-DEPLOY_MODE=${DEPLOY_MODE:-1}
+log_info "正在执行宝塔面板部署..."
 
-echo ""
-log_info "正在执行初始化..."
-
-if [ "$DEPLOY_MODE" = "1" ]; then
-    log_info "使用宝塔面板部署模式..."
-    
-    if [ -f "deploy/bt-deploy.sh" ]; then
-        log_info "执行宝塔面板部署脚本..."
-        bash deploy/bt-deploy.sh "$DOMAIN" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
-    else
-        log_error "宝塔面板部署脚本未找到，请检查私有仓库"
-        log_info "是否切换到标准部署模式？(y/n)"
-        read -r SWITCH_MODE
-        if [ "$SWITCH_MODE" = "y" ] || [ "$SWITCH_MODE" = "Y" ]; then
-            if [ -f "deploy/init.sh" ]; then
-                bash deploy/init.sh
-            else
-                log_info "请手动编辑 server/.env 文件，配置数据库连接信息"
-                log_info "然后运行：npm run start"
-            fi
-        else
-            log_info "退出部署"
-            exit 0
-        fi
-    fi
+if [ -f "deploy/bt-deploy.sh" ]; then
+    bash deploy/bt-deploy.sh "$DOMAIN" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
 else
-    log_info "使用标准部署模式..."
-    
-    if [ -f "deploy/init.sh" ]; then
-        log_info "执行部署初始化脚本..."
-        bash deploy/init.sh
-    else
-        log_info "执行标准初始化..."
-        
-        log_info "复制环境变量配置..."
-        cp server/.env.example server/.env
-        
-        log_info "修改环境变量配置..."
-        log_info "请手动编辑 server/.env 文件，配置数据库连接信息"
-        log_info "然后运行：npm run start"
-        
-        log_success "部署引导完成！"
-        echo ""
-        echo "========================================="
-        echo "  下一步操作："
-        echo "========================================="
-        echo "  1. 编辑 server/.env 配置数据库"
-        echo "  2. 运行 npm run start 启动服务"
-        echo "  3. 访问 http://localhost:3001/setup 完成初始化"
-        echo "========================================="
-    fi
+    log_error "宝塔面板部署脚本未找到，请联系开发者"
+    exit 1
 fi
+
+echo ""
+echo "========================================="
+echo "  🎉 部署完成！"
+echo "========================================="
+echo ""
+echo "请访问以下地址完成系统初始化配置："
+echo ""
+echo "  🚀 https://${DOMAIN}/setup"
+echo ""
+echo "初始化配置完成后，管理后台地址："
+echo ""
+echo "  🔐 https://${DOMAIN}/admin"
+echo ""
+echo "详细文档请参考: ${DEST_DIR}/deploy/DEPLOY.md"
