@@ -36,23 +36,38 @@ DB_HOST="localhost"
 DB_PORT="3306"
 
 find_node_path() {
+    if [ -d "/www/server/nodejs" ]; then
+        for NODE_DIR in /www/server/nodejs/v*/; do
+            if [ -f "${NODE_DIR}bin/node" ] && [ -f "${NODE_DIR}bin/npm" ]; then
+                export PATH="${NODE_DIR}bin:$PATH"
+                local NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+                log_success "已自动配置宝塔面板 Node.js 路径: ${NODE_DIR}bin (v${NODE_VERSION}.x)"
+                return 0
+            fi
+        done
+
+        for NODE_DIR in /www/server/nodejs/*/; do
+            if [ -d "${NODE_DIR}" ] && [ -f "${NODE_DIR}bin/node" ] && [ -f "${NODE_DIR}bin/npm" ]; then
+                export PATH="${NODE_DIR}bin:$PATH"
+                local NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+                log_success "已自动配置宝塔面板 Node.js 路径: ${NODE_DIR}bin (v${NODE_VERSION}.x)"
+                return 0
+            fi
+        done
+    fi
+
     local NODE_PATHS=(
-        "/www/server/nodejs/v20*/bin"
-        "/www/server/nodejs/v18*/bin"
-        "/www/server/nodejs/latest/bin"
         "/usr/local/nodejs/bin"
         "/usr/local/bin"
         "/usr/bin"
     )
 
     for NODE_PATH in "${NODE_PATHS[@]}"; do
-        if ls -d $NODE_PATH 2>/dev/null | head -n 1 | grep -q .; then
-            local ACTUAL_PATH=$(ls -d $NODE_PATH 2>/dev/null | head -n 1)
-            if [ -f "${ACTUAL_PATH}/node" ] && [ -f "${ACTUAL_PATH}/npm" ]; then
-                export PATH="${ACTUAL_PATH}:$PATH"
-                log_success "已自动配置 Node.js 路径: ${ACTUAL_PATH}"
-                return 0
-            fi
+        if [ -f "${NODE_PATH}/node" ] && [ -f "${NODE_PATH}/npm" ]; then
+            export PATH="${NODE_PATH}:$PATH"
+            local NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+            log_success "已自动配置 Node.js 路径: ${NODE_PATH} (v${NODE_VERSION}.x)"
+            return 0
         fi
     done
 
