@@ -61,6 +61,67 @@ find_node_path() {
     return 1
 }
 
+install_system_deps() {
+    log_info "检测系统依赖..."
+    
+    local REQUIRED_SYSTEM_DEPS=(
+        "git"
+        "curl"
+        "wget"
+        "openssl"
+    )
+
+    local MISSING_SYSTEM_DEPS=()
+    for dep in "${REQUIRED_SYSTEM_DEPS[@]}"; do
+        if ! command -v $dep &> /dev/null; then
+            MISSING_SYSTEM_DEPS+=("$dep")
+        else
+            log_success "系统依赖 $dep 已安装"
+        fi
+    done
+
+    if [ ${#MISSING_SYSTEM_DEPS[@]} -gt 0 ]; then
+        log_info "缺少系统依赖，正在安装: ${MISSING_SYSTEM_DEPS[*]}"
+        if command -v apt &> /dev/null; then
+            apt update -y && apt install -y "${MISSING_SYSTEM_DEPS[@]}"
+        elif command -v yum &> /dev/null; then
+            yum update -y && yum install -y "${MISSING_SYSTEM_DEPS[@]}"
+        else
+            fail "无法安装系统依赖，请手动安装: ${MISSING_SYSTEM_DEPS[*]}"
+        fi
+        log_success "系统依赖安装完成"
+    fi
+}
+
+install_node_deps() {
+    local PROJECT_DIR=$1
+    local INSTALL_DIR=$2
+    
+    log_info "安装项目依赖..."
+
+    if [ ! -d "${PROJECT_DIR}/${INSTALL_DIR}/node_modules" ]; then
+        cd "${PROJECT_DIR}/${INSTALL_DIR}"
+        log_info "正在安装 ${INSTALL_DIR} 依赖..."
+        
+        if [ -f "package-lock.json" ]; then
+            npm ci --only=production 2>/dev/null || npm install --only=production
+        else
+            npm install --only=production
+        fi
+        
+        if [ -d "node_modules" ]; then
+            log_success "${INSTALL_DIR} 依赖安装完成"
+        else
+            log_error "${INSTALL_DIR} 依赖安装失败"
+            return 1
+        fi
+    else
+        log_success "${INSTALL_DIR} 依赖已存在，跳过安装"
+    fi
+    
+    return 0
+}
+
 echo ""
 echo "========================================================"
 echo "  🎬 摄影师独立站 - 一键部署脚本"
@@ -104,7 +165,7 @@ if [ "$DEPLOY_MODE" = "2" ]; then
 
     log_info "步骤1/7: 更新系统并安装基础依赖..."
     apt update -y && apt upgrade -y
-    apt install -y git curl wget nginx
+    apt install -y git curl wget nginx openssl
     log_success "系统更新完成"
 
     log_info "步骤2/7: 安装 Node.js 20.x LTS..."
@@ -165,7 +226,7 @@ else
     echo "├─────────────────────────────────────────┤"
     echo "│  1. 已安装宝塔面板                      │"
     echo "│  2. 已安装 Node.js 20.x LTS            │"
-    echo "│  3. 已安装 PM2                         │"
+    echo "│  3. 已安装 MySQL 数据库                 │"
     echo "│  4. 已创建空白数据库（如：portfolio）   │"
     echo "│  5. 已创建数据库用户（如：dbuser）      │"
     echo "└─────────────────────────────────────────┘"
@@ -178,7 +239,7 @@ else
     log_info "  4. 设置密码并记录下来"
     echo ""
 
-    log_info "步骤1/5: 正在生成 SSH 部署密钥..."
+    log_info "步骤1/6: 生成 SSH 部署密钥..."
 
     mkdir -p ~/.ssh
     chmod 700 ~/.ssh
@@ -212,9 +273,10 @@ else
     log_success "前置准备确认完成"
     echo ""
 
-    log_info "正在检查系统环境..."
+    log_info "步骤2/6: 检测系统依赖..."
+    install_system_deps
 
-    log_info "步骤2/5: 检测并配置 Node.js 路径..."
+    log_info "步骤3/6: 检测并配置 Node.js 路径..."
     find_node_path
 
     MISSING_DEPS=()
@@ -238,12 +300,6 @@ else
         log_success "npm v${NPM_VERSION} 已安装"
     fi
 
-    if ! command -v git &> /dev/null; then
-        MISSING_DEPS+=("git")
-    else
-        log_success "git 已安装"
-    fi
-
     if ! command -v pm2 &> /dev/null; then
         log_warn "PM2 未安装，正在安装..."
         npm install -g pm2
@@ -263,7 +319,7 @@ else
     KEY_CHECK_DIR="~/.ssh"
 fi
 
-log_info "正在验证 SSH 密钥授权..."
+log_info "步骤$(if [ "$DEPLOY_MODE" = "2" ]; then echo "5"; else echo "4"; fi)/$(if [ "$DEPLOY_MODE" = "2" ]; then echo "7"; else echo "6"; fi): 验证 SSH 密钥授权..."
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -307,7 +363,7 @@ else
 fi
 
 echo ""
-log_info "正在拉取核心代码..."
+log_info "步骤$(if [ "$DEPLOY_MODE" = "2" ]; then echo "6"; else echo "5"; fi)/$(if [ "$DEPLOY_MODE" = "2" ]; then echo "7"; else echo "6"; fi): 拉取核心代码..."
 
 mkdir -p /www/wwwroot
 cd /www/wwwroot
@@ -359,6 +415,11 @@ if [ ${#MISSING_FILES[@]} -gt 0 ]; then
 else
     log_success "代码完整性验证通过"
 fi
+
+log_info "步骤$(if [ "$DEPLOY_MODE" = "2" ]; then echo "6"; else echo "5"; fi)/$(if [ "$DEPLOY_MODE" = "2" ]; then echo "7"; else echo "6"; fi): 安装项目依赖..."
+
+install_node_deps "$PROJECT_DIR" "server"
+install_node_deps "$PROJECT_DIR" "web"
 
 echo ""
 log_info "正在收集数据库配置..."
@@ -478,7 +539,7 @@ else
         done
     fi
 
-    log_info "正在执行宝塔面板部署..."
+    log_info "步骤6/6: 执行宝塔面板部署..."
     if [ -f "deploy/bt-deploy.sh" ]; then
         bash deploy/bt-deploy.sh "$DOMAIN" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
     else
