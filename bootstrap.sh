@@ -56,9 +56,30 @@ find_node_path() {
         fi
     done
 
-    log_warn "未找到 Node.js 安装路径"
-    log_warn "请在宝塔面板软件商店中安装 Node.js 20.x LTS"
-    return 1
+    log_warn "未找到 Node.js 安装路径，正在自动安装..."
+
+    if command -v apt &> /dev/null; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+        log_success "Node.js 20.x 安装完成（apt）"
+    elif command -v yum &> /dev/null; then
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
+        yum install -y nodejs
+        log_success "Node.js 20.x 安装完成（yum）"
+    else
+        log_error "无法自动安装 Node.js，请在宝塔面板软件商店中手动安装 Node.js 20.x LTS"
+        return 1
+    fi
+
+    export PATH="/usr/bin:$PATH"
+    if command -v node &> /dev/null; then
+        local NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+        log_success "Node.js v${NODE_VERSION}.x 已安装"
+        return 0
+    else
+        log_error "Node.js 安装后仍无法检测，请检查 PATH 环境变量"
+        return 1
+    fi
 }
 
 install_system_deps() {
