@@ -139,10 +139,15 @@ install_node_deps() {
         cd "${PROJECT_DIR}/${INSTALL_DIR}"
         log_info "正在安装 ${INSTALL_DIR} 依赖..."
         
+        log_info "配置 npm 国内镜像..."
+        npm config set registry https://registry.npmmirror.com/
+        npm config set disturl https://npmmirror.com/mirrors/node/
+        npm config set node_gyp https://npmmirror.com/mirrors/node-gyp/
+        
         if [ -f "package-lock.json" ]; then
-            npm ci --only=production 2>/dev/null || npm install --only=production
+            npm ci --omit=dev 2>/dev/null || npm install --omit=dev
         else
-            npm install --only=production
+            npm install --omit=dev
         fi
         
         if [ -d "node_modules" ]; then
