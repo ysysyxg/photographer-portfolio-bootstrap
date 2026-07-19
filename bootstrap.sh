@@ -35,6 +35,32 @@ DB_TYPE="mysql"
 DB_HOST="localhost"
 DB_PORT="3306"
 
+find_node_path() {
+    local NODE_PATHS=(
+        "/www/server/nodejs/v20*/bin"
+        "/www/server/nodejs/v18*/bin"
+        "/www/server/nodejs/latest/bin"
+        "/usr/local/nodejs/bin"
+        "/usr/local/bin"
+        "/usr/bin"
+    )
+
+    for NODE_PATH in "${NODE_PATHS[@]}"; do
+        if ls -d $NODE_PATH 2>/dev/null | head -n 1 | grep -q .; then
+            local ACTUAL_PATH=$(ls -d $NODE_PATH 2>/dev/null | head -n 1)
+            if [ -f "${ACTUAL_PATH}/node" ] && [ -f "${ACTUAL_PATH}/npm" ]; then
+                export PATH="${ACTUAL_PATH}:$PATH"
+                log_success "已自动配置 Node.js 路径: ${ACTUAL_PATH}"
+                return 0
+            fi
+        fi
+    done
+
+    log_warn "未找到 Node.js 安装路径"
+    log_warn "请在宝塔面板软件商店中安装 Node.js 20.x LTS"
+    return 1
+}
+
 echo ""
 echo "========================================================"
 echo "  🎬 摄影师独立站 - 一键部署脚本"
@@ -188,6 +214,9 @@ else
 
     log_info "正在检查系统环境..."
 
+    log_info "步骤2/5: 检测并配置 Node.js 路径..."
+    find_node_path
+
     MISSING_DEPS=()
 
     if ! command -v node &> /dev/null; then
@@ -205,7 +234,8 @@ else
     if ! command -v npm &> /dev/null; then
         MISSING_DEPS+=("npm")
     else
-        log_success "npm 已安装"
+        NPM_VERSION=$(npm --version)
+        log_success "npm v${NPM_VERSION} 已安装"
     fi
 
     if ! command -v git &> /dev/null; then
@@ -219,14 +249,15 @@ else
         npm install -g pm2
         log_success "PM2 安装完成"
     else
-        log_success "PM2 已安装"
+        PM2_VERSION=$(pm2 --version)
+        log_success "PM2 v${PM2_VERSION} 已安装"
     fi
 
     if [ ${#MISSING_DEPS[@]} -gt 0 ]; then
         fail "缺少必要依赖: ${MISSING_DEPS[*]}，请在宝塔面板软件商店中安装"
     fi
 
-    log_info "系统环境检查完成"
+    log_success "系统环境检查完成"
     echo ""
 
     KEY_CHECK_DIR="~/.ssh"
