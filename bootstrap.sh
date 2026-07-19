@@ -144,6 +144,9 @@ install_node_deps() {
         export NODE_OPTIONS="--dns-result-order=ipv4first"
         export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"
         export PYTHON_MIRROR="https://npmmirror.com/mirrors/python/"
+        export NODEJS_ORG_MIRROR="https://npmmirror.com/mirrors/node/"
+        export NVM_NODEJS_ORG_MIRROR="https://npmmirror.com/mirrors/node/"
+        export NPM_CONFIG_NODE_JS_ORG_MIRROR="https://npmmirror.com/mirrors/node/"
         
         if [ -f "package-lock.json" ]; then
             npm ci --omit=dev 2>/dev/null || npm install --omit=dev
@@ -454,7 +457,7 @@ fi
 log_info "步骤$(if [ "$DEPLOY_MODE" = "2" ]; then echo "6"; else echo "5"; fi)/$(if [ "$DEPLOY_MODE" = "2" ]; then echo "7"; else echo "6"; fi): 安装项目依赖..."
 
 install_node_deps "$PROJECT_DIR" "server"
-install_node_deps "$PROJECT_DIR" "web"
+log_info "前端已为静态构建产物，无需安装依赖"
 
 echo ""
 log_info "正在收集数据库配置..."
