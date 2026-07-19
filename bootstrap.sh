@@ -578,7 +578,8 @@ else
     fi
 
     log_info "步骤6/6: 执行宝塔面板部署..."
-    if [ -f "deploy/bt-deploy.sh" ]; then
+    if [ -f "${PROJECT_DIR}/deploy/bt-deploy.sh" ]; then
+        cd "$PROJECT_DIR"
         bash deploy/bt-deploy.sh "$DOMAIN" "$DB_NAME" "$DB_USER" "$DB_PASSWORD"
     else
         fail "宝塔面板部署脚本未找到，请联系开发者"
