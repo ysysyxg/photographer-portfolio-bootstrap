@@ -430,7 +430,7 @@ cd "$PROJECT_DIR"
 
 REQUIRED_FILES=(
     "server/dist/main.js"
-    "web/.output/public/index.html"
+    "web/.output/public/200.html"
     "version.json"
     "deploy/bt-deploy.sh"
 )
