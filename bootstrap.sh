@@ -281,7 +281,7 @@ else
     log_info "  4. 设置密码并记录下来"
     echo ""
 
-    log_info "步骤1/6: 生成 SSH 部署密钥..."
+    log_info "步骤1/6: 检查 SSH 部署密钥..."
 
     mkdir -p ~/.ssh
     chmod 700 ~/.ssh
@@ -290,14 +290,7 @@ else
         ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "deploy@${DOMAIN}"
         log_success "SSH 密钥生成完成"
     else
-        log_warn "SSH 密钥已存在，是否重新生成？(y/n)"
-        read -r REGEN_KEY
-        if [ "$REGEN_KEY" = "y" ] || [ "$REGEN_KEY" = "Y" ]; then
-            ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "deploy@${DOMAIN}"
-            log_success "SSH 密钥已重新生成"
-        else
-            log_success "使用现有 SSH 密钥"
-        fi
+        log_success "SSH 密钥已存在，直接使用"
     fi
 
     echo ""
