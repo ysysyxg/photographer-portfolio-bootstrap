@@ -122,6 +122,31 @@ warn "============================================"
 
 read -p "公钥已添加到 GitHub 后，请按回车继续..."
 
+log "验证 SSH 密钥授权..."
+MAX_RETRIES=5
+RETRY_DELAY=5
+for ((i=1; i<=MAX_RETRIES; i++)); do
+    ssh -T git@github.com -o StrictHostKeyChecking=no 2>&1 | grep -q "successfully authenticated"
+    if [[ $? -eq 0 ]]; then
+        success "SSH 密钥授权验证成功"
+        break
+    fi
+    if [[ $i -lt ${MAX_RETRIES} ]]; then
+        warn "SSH 认证失败，第 ${i}/${MAX_RETRIES} 次尝试，等待 ${RETRY_DELAY} 秒后重试..."
+        sleep ${RETRY_DELAY}
+    else
+        fail "SSH 密钥授权验证失败，请检查 Deploy Key 是否正确添加到 GitHub"
+    fi
+done
+
+log "验证私有库访问权限..."
+git ls-remote git@github.com:ysysyxg/${PROJECT_NAME}.git >/dev/null 2>&1
+if [[ $? -eq 0 ]]; then
+    success "私有库访问权限验证成功"
+else
+    fail "无法访问私有库，请检查 Deploy Key 配置"
+fi
+
 mkdir -p /www/wwwroot
 cd /www/wwwroot
 

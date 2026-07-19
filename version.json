@@ -1,5 +1,19 @@
 {
-  "version": "1.0.2",
-  "releaseDate": "2026-07-14",
-  "updateChannel": "stable"
+  "version": "0.0.13",
+  "releaseDate": "2026-07-19",
+  "licenseEdition": "developer",
+  "licenseLabel": "开发版",
+  "updateChannel": "stable",
+  "repository": {
+    "github": {
+      "owner": "ysysyxg",
+      "repo": "photographer-portfolio",
+      "apiBase": "https://api.github.com"
+    },
+    "gitee": {
+      "owner": "",
+      "repo": "",
+      "apiBase": "https://gitee.com/api/v5"
+    }
+  }
 }
