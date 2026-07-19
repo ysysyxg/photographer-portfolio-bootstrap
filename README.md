@@ -232,8 +232,7 @@ pm2 restart photographer-portfolio-api
 
 ```
 photographer-portfolio-bootstrap/
-├── bootstrap.sh           # 一键部署引导脚本（宝塔面板专用）
-├── one-click-deploy.sh    # 完整一键部署脚本（含环境安装）
+├── bootstrap.sh           # 一键部署脚本（支持宝塔面板/全新服务器两种模式）
 ├── version.json           # 版本信息
 ├── README.md              # 部署说明
 └── LICENSE                # 开源协议
