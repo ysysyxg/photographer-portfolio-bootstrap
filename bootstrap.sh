@@ -142,7 +142,6 @@ else
     echo "│  3. 已安装 PM2                         │"
     echo "│  4. 已创建空白数据库（如：portfolio）   │"
     echo "│  5. 已创建数据库用户（如：dbuser）      │"
-    echo "│  6. 已添加 SSH 公钥到 GitHub Deploy Keys│"
     echo "└─────────────────────────────────────────┘"
     echo ""
 
@@ -153,21 +152,36 @@ else
     log_info "  4. 设置密码并记录下来"
     echo ""
 
-    log_info "如何添加 SSH 公钥到 GitHub："
-    log_info "  1. 在宝塔面板终端执行：cat ~/.ssh/id_ed25519.pub"
-    log_info "  2. 复制公钥内容"
-    log_info "  3. 打开 https://github.com/ysysyxg/photographer-portfolio/settings/keys"
-    log_info "  4. 点击 Add deploy key，粘贴公钥，勾选 Allow write access"
-    echo ""
+    log_info "步骤1/5: 正在生成 SSH 部署密钥..."
 
-    log_info "是否已完成以上前置准备？(y/n)"
-    read -r READY_CHECK
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
 
-    if [ "$READY_CHECK" != "y" ] && [ "$READY_CHECK" != "Y" ]; then
-        log_info "请先完成前置准备，然后重新运行本脚本"
-        log_info "部署引导程序退出"
-        exit 0
+    if [[ ! -f ~/.ssh/id_ed25519 ]]; then
+        ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "deploy@${DOMAIN}"
+        log_success "SSH 密钥生成完成"
+    else
+        log_warn "SSH 密钥已存在，是否重新生成？(y/n)"
+        read -r REGEN_KEY
+        if [ "$REGEN_KEY" = "y" ] || [ "$REGEN_KEY" = "Y" ]; then
+            ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "deploy@${DOMAIN}"
+            log_success "SSH 密钥已重新生成"
+        else
+            log_success "使用现有 SSH 密钥"
+        fi
     fi
+
+    echo ""
+    log_warn "============================================"
+    log_warn "请将以下公钥添加到 GitHub Deploy Keys:"
+    log_warn "仓库: https://github.com/ysysyxg/photographer-portfolio/settings/keys"
+    log_warn "勾选: Allow write access"
+    log_warn "============================================"
+    cat ~/.ssh/id_ed25519.pub
+    echo ""
+    log_warn "============================================"
+
+    read -p "公钥已添加到 GitHub 后，请按回车继续..."
 
     log_success "前置准备确认完成"
     echo ""
